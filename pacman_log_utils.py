@@ -9,7 +9,7 @@ import sqlcommands as sqlcmd
 
 # Database interactions
 # TODO : Feature to read only lines after a certain date for subsequent runs.
-
+# TODO : Batch processing, writting each line to db is slow af.
 
 @dataclass
 class LogFeatures:
@@ -23,6 +23,7 @@ def prepare_db(db_path: Path) -> None:
     """Creates a SQLite database and log table if not exist."""
     if db_path.is_file():
         print(f"Database '{db_path}' already exists.")
+        # TODO : Confirm to write into this db.
         return
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
