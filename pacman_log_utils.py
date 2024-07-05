@@ -7,6 +7,19 @@ from pathlib import Path
 import sqlcommands as sqlcmd
 
 
+# Helpers
+
+
+def ask_to_console(question: str) -> bool:
+    answer = input(question).lower()
+    if (answer in ['y', 'yes', '']):
+        print("Continuing...")
+        return True
+    else:
+        print("Aborting operation.")
+        return False
+
+
 # Database interactions
 # TODO : Feature to read only lines after a certain date for subsequent runs.
 # TODO : Batch processing, writting each line to db is slow af.
@@ -23,8 +36,10 @@ def prepare_db(db_path: Path) -> None:
     """Creates a SQLite database and log table if not exist."""
     if db_path.is_file():
         print(f"Database '{db_path}' already exists.")
-        # TODO : Confirm to write into this db.
-        return
+        question = "Do you want to write to the existing database? [Y/n]: "
+        answered_yes = ask_to_console(question)
+        if not answered_yes:
+            exit()
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute(sqlcmd.CREATE_TABLE)
