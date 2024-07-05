@@ -1,3 +1,4 @@
 untracked/
 __pycache__/
 pacman-pkgs.db
+pacman.log
