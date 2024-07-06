@@ -57,7 +57,7 @@ def prepare_db(db_path: Path) -> None:
     print(f"Database '{db_path}' created.")
 
 
-def fn_record_installed(entry: LogFeatures, db_path: Path) -> None:
+def record_installed(entry: LogFeatures, db_path: Path) -> None:
     """Called to write into the db if a package was installed"""
     is_installed = True
     is_dependency = False  # TODO not yet implemented
@@ -90,7 +90,7 @@ def fn_record_installed(entry: LogFeatures, db_path: Path) -> None:
             )
 
 
-def fn_record_removed(entry: LogFeatures, db_path: Path) -> None:
+def record_removed(entry: LogFeatures, db_path: Path) -> None:
     """Called to write into the db if a package was removed"""
     is_installed = False
     with sqlite3.connect(db_path) as conn:
@@ -106,7 +106,7 @@ def fn_record_removed(entry: LogFeatures, db_path: Path) -> None:
         )
 
 
-def fn_record_upgraded(entry: LogFeatures, db_path: Path) -> None:
+def record_upgraded(entry: LogFeatures, db_path: Path) -> None:
     """Called to write into the db if a package was upgraded"""
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
@@ -142,23 +142,30 @@ def parse_log_entry(line: str) -> LogFeatures | None:
 # Main Process Lines
 
 
-def process_log_file(log_file: TextIO, db_path: Path) -> None:
+def collect_log_files(log_file: TextIO, db_path: Path) -> None:
     """
-    Process each line within the log file.
+    Collects the features of each line within the log file to memory.
     Handles writting to db based on the action
     taken by pacman: "installed", "updated", or "removed".
     """
-    SELECT_HANDLER = {
-        "installed": fn_record_installed,
-        "removed": fn_record_removed,
-        "upgraded": fn_record_upgraded,
-    }
+    installed_entries = []
+    upgraded_entries = []
+    removed_entries = []
+    
     for line in log_file:
         entry = parse_log_entry(line)
         if entry is None:
             continue
-        handler_fn = SELECT_HANDLER.get(entry.action)
-        if handler_fn is not None:
-            handler_fn(entry, db_path)
+        if entry.action == "installed":
+            installed_entries.append(entry)
+        elif entry.action == "upgraded":
+            upgraded_entries.append(entry)
+        elif entry.action == "removed":
+            removed_entries.append(entry)
         else:
-            print(f"PARSING ERROR -> Unrecognized action: {entry.action}")
+            print("Parsing error!")
+            return None
+    
+    record_installed(installed_entries)
+    record_upgraded(upgraded_entries)
+    record_removed(removed_entries)

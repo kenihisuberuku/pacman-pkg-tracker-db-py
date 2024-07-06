@@ -11,7 +11,7 @@ def main() -> None:
     utils.prepare_db(DB_PATH)
     print("Processing database...")
     with open(LOG_NAME, 'r') as log_file:
-        utils.process_log_file(log_file, DB_PATH)
+        utils.collect_log_files(log_file, DB_PATH)
     print("Completed.")
 
 
