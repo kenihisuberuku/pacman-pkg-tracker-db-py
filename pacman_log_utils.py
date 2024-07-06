@@ -33,7 +33,7 @@ def ask_to_console(question: str) -> bool:
 
 # Database interactions
 # TODO : Feature to read only lines after a certain date for subsequent runs.
-# TODO : Batch processing, writting each line to db is slow af.
+# TODO : (WIP) Batch processing.
 
 @dataclass # TODO : should be frozen
 class LogFeatures:
@@ -57,52 +57,50 @@ def prepare_db(db_path: Path) -> None:
     print(f"Database '{db_path}' created.")
 
 
-def record_installed(entry: LogFeatures, db_path: Path) -> None:
+def record_installed(entries: list[LogFeatures], db_path: Path) -> None:
     """Called to write into the db if a package was installed"""
     is_installed = True
     is_dependency = False  # TODO not yet implemented
+    repacked_entry = [( 
+        entry.package_name,
+        entry.version,
+        entry.timestamp,
+        entry.timestamp,
+        is_installed,
+        is_dependency  
+    ) for entry in entries]
+    
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            sqlcmd.INSERT_INSTALLED, (
-                entry.package_name,
-                entry.version,
-                entry.timestamp,
-                entry.timestamp,
-                is_installed,
-                is_dependency
-            )
-        )
+        cursor.executemany(sqlcmd.INSERT_INSTALLED, repacked_entry)
 
 
-def record_removed(entry: LogFeatures, db_path: Path) -> None:
+def record_removed(entries: list[LogFeatures], db_path: Path) -> None:
     """Called to write into the db if a package was removed"""
     is_installed = False
+    repacked_entry = [( 
+        entry.version,
+        is_installed,
+        entry.timestamp,
+        entry.package_name
+    ) for entry in entries]
+    
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            sqlcmd.UPDATE_REMOVED,
-            (
-                entry.version,
-                is_installed,
-                entry.timestamp,
-                entry.package_name,
-            )
-        )
+        cursor.executemany(sqlcmd.UPDATE_REMOVED, repacked_entry)
 
 
-def record_upgraded(entry: LogFeatures, db_path: Path) -> None:
+def record_upgraded(entries: list[LogFeatures], db_path: Path) -> None:
     """Called to write into the db if a package was upgraded"""
+    repacked_entry = [( 
+        entry.version,
+        entry.timestamp,
+        entry.package_name,
+    ) for entry in entries]
+    
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            sqlcmd.UPDATE_UPGRADED,
-            (
-                entry.version,
-                entry.timestamp,
-                entry.package_name,
-            )
-        )
+        cursor.executemany(sqlcmd.UPDATE_UPGRADED, repacked_entry)
 
 
 # Parser
@@ -151,6 +149,6 @@ def collect_log_files(log_file: TextIO, db_path: Path) -> None:
             print("Parsing error!")
             return None
     
-    record_installed(installed_entries)
-    record_upgraded(upgraded_entries)
-    record_removed(removed_entries)
+    record_installed(installed_entries, db_path)
+    record_upgraded(upgraded_entries, db_path)
+    record_removed(removed_entries, db_path)
