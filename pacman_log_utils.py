@@ -7,6 +7,17 @@ from pathlib import Path
 import sqlcommands as sqlcmd
 
 
+# Constants
+
+LOG_PATTERN = re.compile(
+    r"\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+\-]\d{4})\] "
+    r"\[ALPM] "
+    r"(installed|upgraded|removed) "
+    r"([^ ]+) "
+    r"\((.*)\)$"
+)
+TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
+
 # Helpers
 
 
@@ -24,7 +35,7 @@ def ask_to_console(question: str) -> bool:
 # TODO : Feature to read only lines after a certain date for subsequent runs.
 # TODO : Batch processing, writting each line to db is slow af.
 
-@dataclass
+@dataclass # TODO : should be frozen
 class LogFeatures:
     package_name: str
     action: str
@@ -113,24 +124,15 @@ def fn_record_upgraded(entry: LogFeatures, db_path: Path) -> None:
 # Parser
 
 
-def parse_log_entry(line: str) -> LogFeatures:
+def parse_log_entry(line: str) -> LogFeatures | None:
 # TODO: DeprecationWarning: The default datetime adapter is deprecated as of Python 3.12; see the sqlite3 documentation for suggested replacement recipes
     """Parses /var/log/pacman.log according to this format
     [%YYYY-%MM-%ddT%hh:%mm:%ss%t] [ALPM] action package-name (version)
     (https://doc.qt.io/qt-6/qml-qtqml-qt.html#formatDateTime-method)
     """
-    PATTERN = (
-        r"\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+\-]\d{4})\] "
-        r"\[ALPM] "
-        r"(installed|upgraded|removed) "
-        r"([^ ]+) "
-        r"\((.*)\)$"
-    )
-    TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
-
-    match = re.search(PATTERN, line)
+    match = LOG_PATTERN.search(line)
     if match is None:
-        return
+        return None
     timestamp_str = match.group(1)
     timestamp = datetime.strptime(timestamp_str, TIMESTAMP_FORMAT)
     action = match.group(2)
