@@ -10,11 +10,11 @@ import sqlcommands as sqlcmd
 # Constants
 
 LOG_PATTERN = re.compile(
-    r"\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+\-]\d{4})\] "
+    r"\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+\-]\d{4})\] "  # timestamp_str
     r"\[ALPM] "
-    r"(installed|upgraded|removed) "
-    r"([^ ]+) "
-    r"\((.*)\)$"
+    r"(installed|upgraded|removed) "  # action
+    r"([^ ]+) "  # package_name
+    r"\((.*)\)$"  # versions
 )
 TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 
@@ -108,13 +108,12 @@ def fn_record_removed(entry: LogFeatures, db_path: Path) -> None:
 
 def fn_record_upgraded(entry: LogFeatures, db_path: Path) -> None:
     """Called to write into the db if a package was upgraded"""
-    version = entry.version.split("-> ", 1)[1]
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute(
             sqlcmd.UPDATE_UPDATED,
             (
-                version,
+                entry.version,
                 entry.timestamp,
                 entry.package_name,
             )
@@ -133,11 +132,9 @@ def parse_log_entry(line: str) -> LogFeatures | None:
     match = LOG_PATTERN.search(line)
     if match is None:
         return None
-    timestamp_str = match.group(1)
+    timestamp_str, action, package_name, versions = match.groups()
     timestamp = datetime.strptime(timestamp_str, TIMESTAMP_FORMAT)
-    action = match.group(2)
-    package_name = match.group(3)
-    version = match.group(4)
+    version = versions.split("-> ", 1)[1] if "-> " in versions else versions
 
     return LogFeatures(package_name, action, version, timestamp)
 
