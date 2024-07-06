@@ -64,30 +64,15 @@ def record_installed(entry: LogFeatures, db_path: Path) -> None:
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute(
-            sqlcmd.QUERY_DUPLICATE,
-            (entry.package_name,)
+            sqlcmd.INSERT_INSTALLED, (
+                entry.package_name,
+                entry.version,
+                entry.timestamp,
+                entry.timestamp,
+                is_installed,
+                is_dependency
+            )
         )
-        if cursor.fetchone():
-            cursor.execute(
-                sqlcmd.UPDATE_REINSTALLED, (
-                    entry.version,
-                    entry.timestamp,
-                    entry.timestamp,
-                    is_installed,
-                    entry.package_name
-                )
-            )
-        else:
-            cursor.execute(
-                sqlcmd.INSERT_INSTALLED, (
-                    entry.package_name,
-                    entry.version,
-                    entry.timestamp,
-                    entry.timestamp,
-                    is_installed,
-                    is_dependency
-                )
-            )
 
 
 def record_removed(entry: LogFeatures, db_path: Path) -> None:
@@ -111,7 +96,7 @@ def record_upgraded(entry: LogFeatures, db_path: Path) -> None:
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute(
-            sqlcmd.UPDATE_UPDATED,
+            sqlcmd.UPDATE_UPGRADED,
             (
                 entry.version,
                 entry.timestamp,

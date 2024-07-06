@@ -10,23 +10,8 @@ CREATE TABLE IF NOT EXISTS packages (
 )
 """
 
-QUERY_DUPLICATE = """
-SELECT * FROM packages WHERE name=?
-"""
-
-UPDATE_REINSTALLED = """
-    UPDATE packages
-    SET (
-        version,
-        installed_on,
-        last_modified,
-        is_installed
-    ) = (?, ?, ?, ?)
-    WHERE name=?
-"""
-
 INSERT_INSTALLED = """
-    INSERT INTO packages (
+    INSERT OR REPLACE INTO packages (
         name,
         version,
         installed_on,
@@ -43,7 +28,7 @@ UPDATE_REMOVED = """
     WHERE name=?
 """
 
-UPDATE_UPDATED = """
+UPDATE_UPGRADED = """
     UPDATE packages
     SET version=?, last_modified=?
     WHERE name=?
