@@ -1,7 +1,7 @@
 CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS packages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
+    name TEXT NOT NULL UNIQUE,
     version TEXT NOT NULL,
     installed_on TEXT NOT NULL,
     last_modified TEXT NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS packages (
 """
 
 INSERT_INSTALLED = """
-    INSERT INTO packages (
+    INSERT OR REPLACE INTO packages (
         name,
         version,
         installed_on,
@@ -24,7 +24,7 @@ INSERT_INSTALLED = """
 
 UPDATE_REMOVED = """
     UPDATE packages
-    SET is_installed = ? last_modified = ?
+    SET is_installed = ?, last_modified = ?
     WHERE name = ? AND last_modified <= ?
 """
 
