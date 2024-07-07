@@ -1,7 +1,8 @@
-import sqlite3, re
+import sqlite3
+import re
 from datetime import datetime
 from dataclasses import dataclass
-from typing import TextIO
+from typing import Iterator
 from pathlib import Path
 
 import sqlcommands as sqlcmd
@@ -34,9 +35,10 @@ def ask_to_console(question: str) -> bool:
 # Database interactions
 # TODO : Feature to read only lines after a certain date for subsequent runs.
 # TODO : (WIP) Batch processing.
-# TODO : BUG: multiple entries caused by first being installed as dependency, then installed explicitly
+# TODO : BUG: multiple entries caused by first being installed as dependency,
+# then installed explicitly
 
-@dataclass # TODO : should be frozen
+@dataclass  # TODO : should be frozen
 class LogFeatures:
     package_name: str
     action: str
@@ -62,15 +64,14 @@ def record_installed(entries: list[LogFeatures], db_path: Path) -> None:
     """Called to write into the db if a package was installed"""
     is_installed = True
     is_dependency = False  # TODO not yet implemented
-    repacked_entry = [( 
+    repacked_entry = [(
         entry.package_name,
         entry.version,
         entry.timestamp,
         entry.timestamp,
         is_installed,
-        is_dependency  
+        is_dependency
     ) for entry in entries]
-    
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         cursor.executemany(sqlcmd.INSERT_INSTALLED, repacked_entry)
@@ -79,13 +80,12 @@ def record_installed(entries: list[LogFeatures], db_path: Path) -> None:
 def record_removed(entries: list[LogFeatures], db_path: Path) -> None:
     """Called to write into the db if a package was removed"""
     is_installed = False
-    repacked_entry = [( 
+    repacked_entry = [(
         entry.version,
         is_installed,
         entry.timestamp,
         entry.package_name
     ) for entry in entries]
-    
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         cursor.executemany(sqlcmd.UPDATE_REMOVED, repacked_entry)
@@ -93,12 +93,11 @@ def record_removed(entries: list[LogFeatures], db_path: Path) -> None:
 
 def record_upgraded(entries: list[LogFeatures], db_path: Path) -> None:
     """Called to write into the db if a package was upgraded"""
-    repacked_entry = [( 
+    repacked_entry = [(
         entry.version,
         entry.timestamp,
         entry.package_name,
     ) for entry in entries]
-    
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         cursor.executemany(sqlcmd.UPDATE_UPGRADED, repacked_entry)
@@ -108,7 +107,9 @@ def record_upgraded(entries: list[LogFeatures], db_path: Path) -> None:
 
 
 def parse_log_entry(line: str) -> LogFeatures | None:
-# TODO: DeprecationWarning: The default datetime adapter is deprecated as of Python 3.12; see the sqlite3 documentation for suggested replacement recipes
+    # TODO: DeprecationWarning: The default datetime adapter is deprecated
+    # as of Python 3.12; see the sqlite3 documentation for
+    # suggested replacement recipes
     """Parses /var/log/pacman.log according to this format
     [%YYYY-%MM-%ddT%hh:%mm:%ss%t] [ALPM] action package-name (version)
     (https://doc.qt.io/qt-6/qml-qtqml-qt.html#formatDateTime-method)
@@ -126,7 +127,7 @@ def parse_log_entry(line: str) -> LogFeatures | None:
 # Main Process Lines
 
 
-def collect_log_files(log_file: TextIO, db_path: Path) -> None:
+def collect_log_files(log_file: Iterator, db_path: Path) -> None:
     """
     Collects the features of each line within the log file to memory.
     Handles writting to db based on the action
@@ -153,3 +154,8 @@ def collect_log_files(log_file: TextIO, db_path: Path) -> None:
     record_installed(installed_entries, db_path)
     record_upgraded(upgraded_entries, db_path)
     record_removed(removed_entries, db_path)
+
+
+def process_log_file(log_path: Path, db_path: Path):
+    with open(log_path, 'r') as log_file:
+        collect_log_files(log_file, db_path)
