@@ -127,35 +127,41 @@ def parse_log_entry(line: str) -> LogFeatures | None:
 # Main Process Lines
 
 
-def collect_log_files(log_file: Iterator, db_path: Path) -> None:
+def collect_log_in_batch(
+    log_path: Path,
+    batch_size: int = 500
+) -> Iterator[list[LogFeatures]]:
+    """Reads the log entries in batches"""
+    batch_entries = []
+    with open(log_path, 'r') as log_file:
+        for count, line in enumerate(log_file, 1):
+            entry = parse_log_entry(line)
+            if entry is None:
+                continue
+            batch_entries.append(entry)
+            if count % batch_size == 0:
+                yield batch_entries
+                batch_entries = []
+        if batch_entries is not None:
+            yield batch_entries
+
+
+def process_log_file(log_path: Path, db_path: Path):
     """
     Collects the features of each line within the log file to memory.
     Handles writting to db based on the action
     taken by pacman: "installed", "updated", or "removed".
     """
-    installed_entries = []
-    upgraded_entries = []
-    removed_entries = []
-    
-    for line in log_file:
-        entry = parse_log_entry(line)
-        if entry is None:
-            continue
-        if entry.action == "installed":
-            installed_entries.append(entry)
-        elif entry.action == "upgraded":
-            upgraded_entries.append(entry)
-        elif entry.action == "removed":
-            removed_entries.append(entry)
-        else:
-            print("Parsing error!")
-            return None
-    
-    record_installed(installed_entries, db_path)
-    record_upgraded(upgraded_entries, db_path)
-    record_removed(removed_entries, db_path)
-
-
-def process_log_file(log_path: Path, db_path: Path):
-    with open(log_path, 'r') as log_file:
-        collect_log_files(log_file, db_path)
+    for batch in collect_log_in_batch(log_path):
+        record_installed(
+            [entry for entry in batch if entry.action == "installed"],
+            db_path
+        )
+        record_upgraded(
+            [entry for entry in batch if entry.action == "upgraded"],
+            db_path
+        )
+        record_removed(
+            [entry for entry in batch if entry.action == "removed"],
+            db_path
+        )
