@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS packages (
 """
 
 INSERT_INSTALLED = """
-    INSERT OR REPLACE INTO packages (
+    INSERT INTO packages (
         name,
         version,
         installed_on,
@@ -24,12 +24,12 @@ INSERT_INSTALLED = """
 
 UPDATE_REMOVED = """
     UPDATE packages
-    SET (version, is_installed, last_modified) = (?, ?, ?)
-    WHERE name=?
+    SET is_installed = ? last_modified = ?
+    WHERE name = ? AND last_modified <= ?
 """
 
 UPDATE_UPGRADED = """
     UPDATE packages
-    SET version=?, last_modified=?
-    WHERE name=?
+    SET version = ?, last_modified = ?
+    WHERE name = ? AND is_installed = ?
 """

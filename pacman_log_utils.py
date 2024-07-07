@@ -81,10 +81,10 @@ def record_removed(entries: list[LogFeatures], db_path: Path) -> None:
     """Called to write into the db if a package was removed"""
     is_installed = False
     repacked_entry = [(
-        entry.version,
         is_installed,
         entry.timestamp,
-        entry.package_name
+        entry.package_name,
+        entry.timestamp
     ) for entry in entries]
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
@@ -97,6 +97,7 @@ def record_upgraded(entries: list[LogFeatures], db_path: Path) -> None:
         entry.version,
         entry.timestamp,
         entry.package_name,
+        True,
     ) for entry in entries]
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
@@ -157,11 +158,11 @@ def process_log_file(log_path: Path, db_path: Path):
             [entry for entry in batch if entry.action == "installed"],
             db_path
         )
-        record_upgraded(
-            [entry for entry in batch if entry.action == "upgraded"],
-            db_path
-        )
         record_removed(
             [entry for entry in batch if entry.action == "removed"],
+            db_path
+        )
+        record_upgraded(
+            [entry for entry in batch if entry.action == "upgraded"],
             db_path
         )
