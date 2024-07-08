@@ -18,6 +18,7 @@ LOG_PATTERN = re.compile(
     r"\((.*)\)$"  # versions
 )
 TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
+TIMESTAMPDB_FORMAT = "%Y-%m-%d %H:%M:%S%z"
 
 # Helpers
 
@@ -47,6 +48,7 @@ def prepare_db(db_path: Path) -> None:
     """Creates a SQLite database and log table if not exist."""
     if db_path.is_file():
         print(f"Database '{db_path}' already exists.")
+        print(f"Last script run: {fetch_last_script_run(db_path)}")
         question = "Do you want to write to the existing database? [Y/n]: "
         answered_yes = ask_to_console(question)
         if not answered_yes:
@@ -59,13 +61,14 @@ def prepare_db(db_path: Path) -> None:
 
 def fetch_last_script_run(db_path: Path) -> datetime | None:
     """Get the latest timestamp from the db"""
-    with sqlite3.connect(db_path) as conn:
+    with sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT MAX(last_modified) FROM packages")
-        last_timestamp = datetime.strptime(str(cursor.fetchone()[0]), "%Y-%m-%d %H:%M:%S%z")
-        if last_timestamp is not None:
-            print(f"Last run {last_timestamp}")
-            return last_timestamp
+        fetched = cursor.fetchone()
+        if fetched is None:
+            return None
+        last_timestamp = fetched[0]
+        return last_timestamp
 
 
 def record_installed(entries: list[LogFeatures], db_path: Path) -> None:
@@ -134,7 +137,6 @@ def parse_log_entry(line: str) -> LogFeatures | None:
 
 
 # Main File Processing
-# TODO First run bug: return case None is incompatible.
 
 
 def collect_log_in_batch(
@@ -148,8 +150,12 @@ def collect_log_in_batch(
     with open(log_path, 'r') as log_file:
         for count, line in enumerate(log_file, 1):
             entry = parse_log_entry(line)
-            if entry is None or entry.timestamp < last_run:
+            if entry is None:
                 continue
+            if last_run is not None: 
+                dt_last_run = datetime.strptime(last_run, TIMESTAMPDB_FORMAT)
+                if entry.timestamp <= dt_last_run:
+                    continue
             batch_entries.append(entry)
             if count % batch_size == 0:
                 yield batch_entries
