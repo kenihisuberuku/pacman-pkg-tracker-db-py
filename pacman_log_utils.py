@@ -33,10 +33,7 @@ def ask_to_console(question: str) -> bool:
 
 
 # Database interactions
-# TODO : Feature to read only lines after a certain date for subsequent runs.
-# TODO : (WIP) Batch processing.
-# TODO : BUG: multiple entries caused by first being installed as dependency,
-# then installed explicitly
+# TODO : (WIP) Feature to read only lines after a certain date for subsequent runs.
 
 @dataclass  # TODO : should be frozen
 class LogFeatures:
