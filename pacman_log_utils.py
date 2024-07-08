@@ -33,9 +33,9 @@ def ask_to_console(question: str) -> bool:
 
 
 # Database interactions
-# TODO : (WIP) Feature to read only lines after a certain date for subsequent runs.
+# TODO : Feature to read only lines after a certain date for subsequent runs.
 
-@dataclass  # TODO : should be frozen
+@dataclass(frozen=True)
 class LogFeatures:
     package_name: str
     action: str
@@ -55,6 +55,17 @@ def prepare_db(db_path: Path) -> None:
         cursor = conn.cursor()
         cursor.execute(sqlcmd.CREATE_TABLE)
     print(f"Database '{db_path}' created.")
+
+
+def fetch_last_script_run(db_path: Path) -> datetime | None:
+    """Get the latest timestamp from the db"""
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT MAX(last_modified) FROM packages")
+        last_timestamp = datetime.strptime(str(cursor.fetchone()[0]), "%Y-%m-%d %H:%M:%S%z")
+        if last_timestamp is not None:
+            print(f"Last run {last_timestamp}")
+            return last_timestamp
 
 
 def record_installed(entries: list[LogFeatures], db_path: Path) -> None:
