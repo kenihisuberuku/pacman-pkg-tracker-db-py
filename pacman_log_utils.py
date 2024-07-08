@@ -133,19 +133,22 @@ def parse_log_entry(line: str) -> LogFeatures | None:
     return LogFeatures(package_name, action, version, timestamp)
 
 
-# Main Process Lines
+# Main File Processing
+# TODO First run bug: return case None is incompatible.
 
 
 def collect_log_in_batch(
     log_path: Path,
+    db_path: Path,
     batch_size: int = 500
 ) -> Iterator[list[LogFeatures]]:
     """Reads the log entries in batches"""
     batch_entries = []
+    last_run = fetch_last_script_run(db_path)
     with open(log_path, 'r') as log_file:
         for count, line in enumerate(log_file, 1):
             entry = parse_log_entry(line)
-            if entry is None:
+            if entry is None or entry.timestamp < last_run:
                 continue
             batch_entries.append(entry)
             if count % batch_size == 0:
@@ -161,7 +164,7 @@ def process_log_file(log_path: Path, db_path: Path):
     Handles writting to db based on the action
     taken by pacman: "installed", "updated", or "removed".
     """
-    for batch in collect_log_in_batch(log_path):
+    for batch in collect_log_in_batch(log_path, db_path):
         record_installed(
             [entry for entry in batch if entry.action == "installed"],
             db_path
